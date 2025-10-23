@@ -1,24 +1,20 @@
-import { useEffect, useState } from "react";
-import { getQuizzes } from "../services/api";
+import { Link } from 'react-router';
 
 export default function Home() {
-  const [quizzes, setQuizzes] = useState([]);
-
-  useEffect(() => {
-    getQuizzes().then(setQuizzes).catch(console.error);
-  }, []);
-
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">Daftar Quiz</h1>
-      <ul className="space-y-3">
-        {quizzes.map((q) => (
-          <li key={q.id} className="p-4 bg-gray-100 rounded-lg">
-            <h2 className="text-xl font-semibold">{q.title}</h2>
-            <p>{q.description}</p>
-          </li>
-        ))}
-      </ul>
+    <div className="flex flex-col items-center justify-center h-[80vh] text-center p-8">
+      <h1 className="text-4xl font-bold mb-4 text-purple-700">
+        Selamat Datang di Quizora 🎮
+      </h1>
+      <p className="max-w-xl text-gray-600 mb-8">
+        Website interaktif untuk menguji pengetahuanmu! Pilih quiz favoritmu dan
+        jawab pertanyaan satu per satu seperti Kahoot!
+      </p>
+      <Link
+        to="/quiz"
+        className="bg-purple-600 hover:bg-purple-800 text-white px-6 py-3 rounded-lg shadow-lg">
+        Mulai Sekarang
+      </Link>
     </div>
   );
 }
