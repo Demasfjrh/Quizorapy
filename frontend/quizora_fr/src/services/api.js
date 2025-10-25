@@ -1,51 +1,79 @@
-const API_BASE = "http://127.0.0.1:8000"; // ganti ke URL backend-mu jika deploy
+const API_BASE = "http://127.0.0.1:8000";
 
-// ==== QUIZ ====
-export async function submitQuiz(quizId, answers) {
-  // answers: [{ question_id: number, choice_id: number }, ...]
-  const res = await fetch(`${API_BASE}/quiz/${quizId}/submit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ answers }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error("Gagal submit jawaban: " + text);
-  }
-  return await res.json(); // { total, correct, score_percent }
-}
-
-// 📋 Ambil daftar semua quiz
-export async function getQuizzes() {
-  const res = await fetch(`${API_BASE}/quiz`);
-  if (!res.ok) throw new Error("Gagal mengambil data quiz");
+export async function getHomepageInfo() {
+  const res = await fetch(`${API_BASE}/`);
   return await res.json();
 }
 
-// 📘 Ambil detail quiz (berisi semua pertanyaan & pilihan)
+export async function getQuizzes({ search = "", category = "", sort = "" } = {}) {
+  const params = new URLSearchParams();
+
+  if (search) params.append("search", search);
+  if (category) params.append("category", category);
+  if (sort) params.append("sort", sort);
+
+  const url = `${API_BASE}/quiz?${params.toString()}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Gagal fetch quiz");
+  return await res.json();
+}
+
+export async function getCategories() {
+  const res = await fetch(`${API_BASE}/categories`);
+  if (!res.ok) throw new Error("Gagal mengambil kategori");
+  return await res.json();
+}
+
 export async function getQuizById(id) {
   const res = await fetch(`${API_BASE}/quiz/${id}`);
   if (!res.ok) throw new Error("Gagal mengambil detail quiz");
   return await res.json();
 }
 
-// 🎯 Ambil satu pertanyaan berdasarkan urutan (untuk mode main 1 per 1 seperti Kahoot)
 export async function getQuestionByNumber(quizId, number) {
   const res = await fetch(`${API_BASE}/quiz/${quizId}/question/${number}`);
   if (!res.ok) throw new Error("Gagal mengambil pertanyaan");
   return await res.json();
 }
 
-// 🏠 Ambil info homepage (opsional untuk tampilan awal)
-export async function getHomepageInfo() {
-  const res = await fetch(`${API_BASE}/`);
-  if (!res.ok) throw new Error("Gagal mengambil info homepage");
+export async function submitQuiz(quizId, answers) {
+  const res = await fetch(`${API_BASE}/quiz/${quizId}/submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ answers }),
+  });
+  if (!res.ok) throw new Error("Submit gagal");
   return await res.json();
 }
 
-// di atas sudah ada getQuizById
 export async function getQuestionsByQuizId(quizId) {
-  // Ambil seluruh quiz lalu kembalikan array questions
   const quiz = await getQuizById(quizId);
   return quiz.questions || [];
+}
+
+export async function getWordGames({ search = "", category = "" } = {}) {
+  const params = new URLSearchParams();
+  if (search) params.append("search", search);
+  if (category) params.append("category", category);
+  const url = `${API_BASE}/wordgames${params.toString() ? "?" + params.toString() : ""}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Gagal mengambil wordgames");
+  return await res.json();
+}
+
+export async function getWordGameById(id) {
+  const res = await fetch(`${API_BASE}/wordgames/${id}`);
+  if (!res.ok) throw new Error("Gagal mengambil puzzle");
+  return await res.json();
+}
+
+export async function submitWordGame(id, foundWords) {
+  const res = await fetch(`${API_BASE}/wordgames/${id}/submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ found: foundWords }),
+  });
+  if (!res.ok) throw new Error("Gagal submit puzzle");
+  return await res.json();
 }

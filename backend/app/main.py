@@ -1,102 +1,98 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from app.db import get_session
-from app.models import Quiz, Question, Choice
+from app.models import Quiz, Question, Choice, Category
+from app.models import Puzzle, PuzzleWord
 
-app = FastAPI(title="Quiz Game API", version="1.0.0")
+app = FastAPI(title="Quiz Game API", version="2.0.0")
 
-# ✅ Izinkan akses dari frontend (misal React/Vite)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ubah ke domain frontend kalau sudah deploy
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-# 🏠 Homepage Info
 @app.get("/")
 def homepage():
-    return {
-        "message": "Selamat datang di Quiz Game API 🎮",
-        "routes": {
-            "/quiz": "Daftar semua quiz",
-            "/quiz/{quiz_id}": "Detail quiz + semua pertanyaan",
-            "/quiz/{quiz_id}/question/{number}": "Pertanyaan berdasarkan urutan",
-        },
-    }
+    return {"message": "Welcome to Quiz API 🎮"}
 
+# ✅ List categories
+@app.get("/categories")
+def get_categories():
+    with get_session() as s:
+        cats = s.query(Category).order_by(Category.name).all()
+        return [c.name for c in cats]
 
-# 📋 Ambil semua quiz
+# ✅ List quiz + Filter + Search + Sort
 @app.get("/quiz")
-def get_quizzes():
-    with get_session() as session:
-        quizzes = session.query(Quiz).all()
+def get_quizzes(
+    search: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    sort: Optional[str] = Query(None)
+):
+    with get_session() as s:
+        q = s.query(Quiz)
+
+        if search:
+            q = q.filter(Quiz.title.ilike(f"%{search}%"))
+
+        if category:
+            q = q.join(Quiz.categories).filter(Category.name == category)
+
+        quizzes = q.all()
+
+        if sort == "a-z":
+            quizzes = sorted(quizzes, key=lambda x: x.title.lower())
+        elif sort == "z-a":
+            quizzes = sorted(quizzes, key=lambda x: x.title.lower(), reverse=True)
+
         return [
             {
-                "id": q.id,
-                "title": q.title,
-                "description": q.description,
-                "question_count": len(q.questions),
+                "id": quiz.id,
+                "title": quiz.title,
+                "description": quiz.description,
+                "categories": [c.name for c in quiz.categories],
+                "question_count": len(quiz.questions),
             }
-            for q in quizzes
+            for quiz in quizzes
         ]
 
-
-# 🧠 Ambil detail quiz beserta semua pertanyaan
+# ✅ Full detail quiz
 @app.get("/quiz/{quiz_id}")
 def get_quiz(quiz_id: int):
-    with get_session() as session:
-        quiz = session.query(Quiz).filter(Quiz.id == quiz_id).first()
+    with get_session() as s:
+        quiz = s.query(Quiz).filter(Quiz.id == quiz_id).first()
         if not quiz:
-            raise HTTPException(status_code=404, detail="Quiz tidak ditemukan")
+            raise HTTPException(404, "Quiz tidak ditemukan")
 
-        return {
-            "id": quiz.id,
-            "title": quiz.title,
-            "description": quiz.description,
-            "questions": [
-                {
-                    "id": q.id,
-                    "text": q.text,
-                    "options": [
-                        {"id": c.id, "text": c.text}
-                        for c in q.choices
-                    ],
-                }
-                for q in quiz.questions
-            ],
-        }
+        return quiz.to_dict()
 
-
-# 🎯 Ambil pertanyaan berdasarkan nomor urutan (untuk mode 1 per 1 seperti Kahoot)
+# ✅ One-by-one question (like Kahoot)
 @app.get("/quiz/{quiz_id}/question/{number}")
 def get_question(quiz_id: int, number: int):
-    with get_session() as session:
-        quiz = session.query(Quiz).filter(Quiz.id == quiz_id).first()
+    with get_session() as s:
+        quiz = s.query(Quiz).filter(Quiz.id == quiz_id).first()
         if not quiz:
-            raise HTTPException(status_code=404, detail="Quiz tidak ditemukan")
+            raise HTTPException(404, "Quiz tidak ditemukan")
 
         questions = quiz.questions
         if number < 1 or number > len(questions):
-            raise HTTPException(status_code=404, detail="Nomor pertanyaan tidak valid")
+            raise HTTPException(404, "Nomor pertanyaan tidak valid")
 
-        question = questions[number - 1]
+        q = questions[number - 1]
 
         return {
             "quiz_id": quiz.id,
-            "quiz_title": quiz.title,
             "question_number": number,
-            "question_text": question.text,
-            "options": [
-                {"id": c.id, "text": c.text}
-                for c in question.choices
-            ],
+            "text": q.text,
+            "options": [{"id": c.id, "text": c.text} for c in q.choices],
         }
 
+# ✅ Submit result
 class AnswerItem(BaseModel):
     question_id: int
     choice_id: int
@@ -111,22 +107,67 @@ class SubmitResult(BaseModel):
 
 @app.post("/quiz/{quiz_id}/submit", response_model=SubmitResult)
 def submit_quiz(quiz_id: int, payload: SubmitPayload):
-    with get_session() as session:
-        quiz = session.query(Quiz).filter(Quiz.id == quiz_id).first()
+    with get_session() as s:
+        quiz = s.query(Quiz).filter(Quiz.id == quiz_id).first()
         if not quiz:
-            raise HTTPException(status_code=404, detail="Quiz tidak ditemukan")
+            raise HTTPException(404, "Quiz tidak ditemukan")
 
-        # buat map question_id -> set(choice_id benar)
-        correct_map = {}
-        for q in quiz.questions:
-            correct_ids = [c.id for c in q.choices if c.is_correct]
-            correct_map[q.id] = set(correct_ids)
+        correct_map = {
+            q.id: {c.id for c in q.choices if c.is_correct}
+            for q in quiz.questions
+        }
+
+        correct = sum(
+            1 for ans in payload.answers
+            if ans.choice_id in correct_map.get(ans.question_id, set())
+        )
 
         total = len(quiz.questions)
-        correct = 0
-        for ans in payload.answers:
-            if ans.question_id in correct_map and ans.choice_id in correct_map[ans.question_id]:
-                correct += 1
+        score_percent = (correct / total) * 100 if total > 0 else 0
 
-        score_percent = (correct / total) * 100 if total > 0 else 0.0
         return SubmitResult(total=total, correct=correct, score_percent=score_percent)
+
+@app.get("/wordgames")
+def list_puzzles(search: Optional[str] = Query(None), category: Optional[str] = Query(None)):
+    with get_session() as s:
+        q = s.query(Puzzle)
+        if search:
+            q = q.filter(Puzzle.title.ilike(f"%{search}%"))
+        if category:
+            q = q.filter(Puzzle.category == category)
+        puzzles = q.all()
+        return [
+            {"id": p.id, "title": p.title, "category": p.category, "description": p.description}
+            for p in puzzles
+        ]
+
+# --- Detail puzzle (grid + words) ---
+@app.get("/wordgames/{puzzle_id}")
+def get_puzzle(puzzle_id: int):
+    with get_session() as s:
+        p = s.query(Puzzle).filter(Puzzle.id == puzzle_id).first()
+        if not p:
+            raise HTTPException(status_code=404, detail="Puzzle tidak ditemukan")
+        return p.to_dict()
+
+# --- Submit found words ---
+class PuzzleSubmitPayload(BaseModel):
+    found: List[str]
+
+class PuzzleSubmitResult(BaseModel):
+    total: int
+    found_correct: int
+    percent: float
+
+@app.post("/wordgames/{puzzle_id}/submit", response_model=PuzzleSubmitResult)
+def submit_puzzle(puzzle_id: int, payload: PuzzleSubmitPayload):
+    with get_session() as s:
+        p = s.query(Puzzle).filter(Puzzle.id == puzzle_id).first()
+        if not p:
+            raise HTTPException(status_code=404, detail="Puzzle tidak ditemukan")
+        correct_set = {w.word.upper() for w in p.words}
+        found_set = {w.upper() for w in payload.found}
+        correct_found = len(correct_set & found_set)
+        total = len(correct_set)
+        percent = (correct_found / total) * 100 if total > 0 else 0.0
+        return PuzzleSubmitResult(total=total, found_correct=correct_found, percent=percent)
