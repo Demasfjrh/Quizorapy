@@ -1,10 +1,11 @@
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Query # type: ignore
+from fastapi.middleware.cors import CORSMiddleware # type: ignore
+from pydantic import BaseModel # type: ignore
 from typing import List, Optional
 from app.db import get_session
 from app.models import Quiz, Question, Choice, Category
 from app.models import Puzzle, PuzzleWord
+from sqlalchemy import func # PENTING: Import func untuk lower() # type: ignore
 
 app = FastAPI(title="Quiz Game API", version="2.0.0")
 
@@ -134,7 +135,9 @@ def list_puzzles(search: Optional[str] = Query(None), category: Optional[str] = 
         if search:
             q = q.filter(Puzzle.title.ilike(f"%{search}%"))
         if category:
-            q = q.filter(Puzzle.category == category)
+            # PERBAIKAN: Menggunakan func.lower() untuk filter case-insensitive
+            q = q.filter(func.lower(Puzzle.category) == category.lower())
+            
         puzzles = q.all()
         return [
             {"id": p.id, "title": p.title, "category": p.category, "description": p.description}

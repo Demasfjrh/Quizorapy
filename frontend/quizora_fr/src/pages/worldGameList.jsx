@@ -1,6 +1,7 @@
+// src/pages/WordGamesList.jsx
 import { useEffect, useState } from "react";
-import { getWordGames } from "../services/api";
 import { useNavigate } from "react-router";
+import { getWordGames } from "../services/api";
 
 export default function WordGamesList() {
   const [puzzles, setPuzzles] = useState([]);
@@ -17,8 +18,11 @@ export default function WordGamesList() {
   }, [search, category]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-100 to-orange-200 p-6 bg-[url('/puzzle.svg')] bg-cover bg-fixed">
-      <h1 className="text-4xl font-extrabold text-orange-700 text-center drop-shadow mb-6">
+    // Latar Belakang: Dark Mode, gradien Moonlight Blue
+    <div className="min-h-screen bg-gray-900 text-gray-100 p-6 bg-[url('/puzzle.svg')] bg-cover bg-fixed border-t-4 border-cyan-400">
+      <h1 
+        // Judul: Efek Neon Pink
+        className="text-4xl font-extrabold text-transparent bg-clip-text bg-linear-to-r from-pink-500 to-cyan-400 text-center mb-6 drop-shadow-lg shadow-pink-500/50">
         🧩 Word Search Playground
       </h1>
 
@@ -28,7 +32,8 @@ export default function WordGamesList() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Cari puzzle..."
-          className="px-4 py-3 border rounded-xl w-full max-w-md shadow focus:ring-2 focus:ring-orange-400"
+          // Input: Gaya Dark Mode Neon
+          className="px-4 py-3 border border-cyan-500 bg-gray-800 text-white rounded-lg w-full max-w-md shadow-xl shadow-cyan-500/10 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
         />
       </div>
 
@@ -38,10 +43,11 @@ export default function WordGamesList() {
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            className={`px-4 py-2 rounded-full whitespace-nowrap transition font-semibold ${
+            // Tombol Kategori: Moonlight Blue/Neon
+            className={`px-4 py-2 rounded-lg whitespace-nowrap transition font-semibold ${
               category === cat
-                ? "bg-orange-500 text-white shadow-md"
-                : "bg-white/70 hover:bg-orange-200"
+                ? "bg-cyan-500 text-gray-900 shadow-xl shadow-cyan-500/50" // Active: Cyan (Moonlight Blue)
+                : "bg-gray-700/70 hover:bg-gray-600/70 text-gray-200 border border-pink-500/50"
             }`}
           >
             {cat}
@@ -54,21 +60,23 @@ export default function WordGamesList() {
         {puzzles.map((p) => (
           <div
             key={p.id}
-            className="rounded-2xl p-5 bg-white shadow-lg hover:shadow-2xl hover:scale-[1.03] cursor-pointer border border-orange-200 transition"
+            // Kartu: Gaya Dark Mode bergaris Neon
+            className="rounded-xl p-5 bg-gray-800 shadow-2xl hover:shadow-cyan-500/20 hover:scale-[1.03] cursor-pointer border border-pink-500/70 transition"
           >
-            <h3 className="text-xl font-bold text-orange-700">{p.title}</h3>
-            <p className="text-sm text-gray-600 mt-2 line-clamp-2">{p.description}</p>
+            <h3 className="text-xl font-bold text-cyan-400">{p.title}</h3>
+            <p className="text-sm text-gray-400 mt-2 line-clamp-2">{p.description}</p>
 
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => navigate(`/wordgames/play/${p.id}`)}
-                className="flex-1 bg-orange-500 text-white rounded-lg px-4 py-2 hover:bg-orange-600"
+                // Tombol Utama: Neon Pink
+                className="flex-1 bg-pink-600 text-white rounded-lg px-4 py-2 hover:bg-pink-500 shadow-lg shadow-pink-500/30 font-bold"
               >
                 Main 🎮
               </button>
               <button
                 onClick={() => navigate(`/wordgames/${p.id}`)}
-                className="px-4 py-2 text-orange-600 font-semibold"
+                className="px-4 py-2 text-cyan-400 font-semibold border border-cyan-400 rounded-lg hover:bg-cyan-400 hover:text-gray-900 transition"
               >
                 Detail
               </button>

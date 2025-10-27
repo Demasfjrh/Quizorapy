@@ -14,7 +14,7 @@ export default function App() {
       <Navbar />
 
       {/* Main Content */}
-      <div className="pt-20 px-4">
+      <div className="pt-5 px-4">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/quiz" element={<QuizList />} />
