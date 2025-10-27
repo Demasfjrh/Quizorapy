@@ -1,19 +1,20 @@
-const API_BASE = "http://127.0.0.1:8000";
+// Ambil URL dari environment (Vercel / Netlify / local)
+const API_BASE = import.meta.env.VITE_API_URL;
 
+// Homepage
 export async function getHomepageInfo() {
   const res = await fetch(`${API_BASE}/`);
   return await res.json();
 }
 
+// Quizzes
 export async function getQuizzes({ search = "", category = "", sort = "" } = {}) {
   const params = new URLSearchParams();
-
   if (search) params.append("search", search);
   if (category) params.append("category", category);
   if (sort) params.append("sort", sort);
 
   const url = `${API_BASE}/quiz?${params.toString()}`;
-
   const res = await fetch(url);
   if (!res.ok) throw new Error("Gagal fetch quiz");
   return await res.json();
@@ -52,10 +53,12 @@ export async function getQuestionsByQuizId(quizId) {
   return quiz.questions || [];
 }
 
+// Wordgame
 export async function getWordGames({ search = "", category = "" } = {}) {
   const params = new URLSearchParams();
   if (search) params.append("search", search);
   if (category) params.append("category", category);
+
   const url = `${API_BASE}/wordgames${params.toString() ? "?" + params.toString() : ""}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("Gagal mengambil wordgames");
