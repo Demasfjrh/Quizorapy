@@ -9,9 +9,10 @@ from sqlalchemy import func # PENTING: Import func untuk lower() # type: ignore
 
 app = FastAPI(title="Quiz Game API", version="2.0.0")
 
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://quizora-frontend-your-deploy-url.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
